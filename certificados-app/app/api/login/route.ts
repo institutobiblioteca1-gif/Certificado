@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Usuário ou senha inválidos" }, { status: 401 });
   }
 
-  const token = createSessionToken(usuario);
+  const token = await createSessionToken(usuario);
   const res = NextResponse.json({ ok: true });
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
