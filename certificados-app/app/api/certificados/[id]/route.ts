@@ -56,7 +56,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   });
 
   const fileName = `certificados/${cert.loteId}/${cert.numero}-${novoAluno.replace(/\s+/g, "-")}-${Date.now()}.pdf`;
-  const blob = await put(fileName, new Blob([pdfBytes], { type: "application/pdf" }), { access: "public" });
+  const blob = await put(fileName, Buffer.from(pdfBytes) as any, { access: "public", contentType: "application/pdf" });
 
   const atualizado = await prisma.certificado.update({
     where: { id: params.id },
