@@ -16,10 +16,10 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     zip.file(`${cert.numero} - ${cert.aluno}.pdf`, buffer);
   }
 
-  const zipBytes = await zip.generateAsync({ type: "uint8array" });
+  const zipBytes = await zip.generateAsync({ type: "nodebuffer" });
   const nomeArquivo = lote.nome.replace(/[^a-zA-Z0-9]+/g, "_") + ".zip";
 
-  return new NextResponse(zipBytes, {
+  return new NextResponse(zipBytes as any, {
     headers: {
       "Content-Type": "application/zip",
       "Content-Disposition": `attachment; filename="${nomeArquivo}"`
