@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isValidToken, SESSION_COOKIE } from "./lib/auth";
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   const publico =
@@ -13,7 +13,8 @@ export function middleware(req: NextRequest) {
   if (publico) return NextResponse.next();
 
   const token = req.cookies.get(SESSION_COOKIE)?.value;
-  if (!isValidToken(token)) {
+  const valido = await isValidToken(token);
+  if (!valido) {
     if (pathname.startsWith("/api")) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
