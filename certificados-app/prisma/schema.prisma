@@ -1,0 +1,112 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AssetType {
+  PLANO_FUNDO
+  CABECALHO
+  ASSINATURA
+}
+
+model Asset {
+  id        String    @id @default(cuid())
+  type      AssetType
+  nome      String
+  cargo     String?
+  url       String
+  createdAt DateTime  @default(now())
+
+  modelosPlanoFundo Modelo[] @relation("ModeloPlanoFundo")
+  modelosCabecalho  Modelo[] @relation("ModeloCabecalho")
+  modelosAssinatura Modelo[] @relation("ModeloAssinatura")
+}
+
+model Curso {
+  id           String   @id @default(cuid())
+  nome         String
+  descricao    String?
+  cargaHoraria String?
+  instituicao  String?
+  ano          String?
+  status       String   @default("Ativo")
+  createdAt    DateTime @default(now())
+  lotes        Lote[]
+}
+
+model Evento {
+  id           String   @id @default(cuid())
+  nome         String
+  descricao    String?
+  data         String?
+  local        String?
+  cargaHoraria String?
+  instituicao  String?
+  ano          String?
+  createdAt    DateTime @default(now())
+  lotes        Lote[]
+}
+
+model Modelo {
+  id                String   @id @default(cuid())
+  nome              String
+  texto             String
+  tamanhoFonte      Int      @default(20)
+  alinhamento       String   @default("center")
+  corTexto          String   @default("#1a1a1a")
+  nomeX             Float    @default(50)
+  nomeY             Float    @default(45)
+  cabecalhoX        Float    @default(50)
+  cabecalhoY        Float    @default(12)
+  cabecalhoLargura  Float    @default(140)
+  assinaturaX       Float    @default(50)
+  assinaturaY       Float    @default(80)
+  assinaturaLargura Float    @default(160)
+
+  planoFundoId  String?
+  planoFundo    Asset?  @relation("ModeloPlanoFundo", fields: [planoFundoId], references: [id])
+  cabecalhoId   String?
+  cabecalho     Asset?  @relation("ModeloCabecalho", fields: [cabecalhoId], references: [id])
+  assinaturaId  String?
+  assinatura    Asset?  @relation("ModeloAssinatura", fields: [assinaturaId], references: [id])
+
+  createdAt DateTime @default(now())
+  lotes     Lote[]
+}
+
+model Lote {
+  id             String    @id @default(cuid())
+  nome           String
+  cursoId        String?
+  curso          Curso?    @relation(fields: [cursoId], references: [id])
+  eventoId       String?
+  evento         Evento?   @relation(fields: [eventoId], references: [id])
+  turma          String?
+  ano            String?
+  dataRealizacao String?
+  cargaHoraria   String?
+  local          String?
+  modeloId       String
+  modelo         Modelo    @relation(fields: [modeloId], references: [id])
+  quantidade     Int       @default(0)
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  certificados   Certificado[]
+}
+
+model Certificado {
+  id        String    @id @default(cuid())
+  numero    String    @unique
+  aluno     String
+  loteId    String
+  lote      Lote      @relation(fields: [loteId], references: [id])
+  pdfUrl    String
+  status    String    @default("Ativo")
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
