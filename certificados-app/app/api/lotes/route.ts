@@ -95,8 +95,9 @@ export async function POST(req: NextRequest) {
     });
 
     const fileName = `certificados/${lote.id}/${numero}-${aluno.replace(/\s+/g, "-")}.pdf`;
-    const blob = await put(fileName, new Blob([pdfBytes], { type: "application/pdf" }), {
-      access: "public"
+    const blob = await put(fileName, Buffer.from(pdfBytes) as any, {
+      access: "public",
+      contentType: "application/pdf"
     });
 
     const cert = await prisma.certificado.create({
