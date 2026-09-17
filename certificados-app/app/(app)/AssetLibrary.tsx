@@ -45,39 +45,4 @@ export default function AssetLibrary({
     <div>
       <div className="page-header">
         <h2>{titulo}</h2>
-        <button className="btn" onClick={() => setMostrarForm(!mostrarForm)}>+ Cadastrar novo</button>
-      </div>
-      {dica && <p className="helper-text" style={{ marginBottom: 16 }}>{dica}</p>}
-
-      {mostrarForm && (
-        <form className="card" onSubmit={enviar} style={{ marginBottom: 20 }}>
-          <div className="field-row">
-            <div className="field"><label>Nome</label><input required value={nome} onChange={e => setNome(e.target.value)} /></div>
-            {comCargo && (
-              <div className="field"><label>Cargo</label><input value={cargo} onChange={e => setCargo(e.target.value)} placeholder="Ex.: Diretor" /></div>
-            )}
-          </div>
-          <div className="field">
-            <label>Imagem (PNG, JPG ou WEBP)</label>
-            <input type="file" accept="image/png,image/jpeg,image/webp" required onChange={e => setFile(e.target.files?.[0] || null)} />
-          </div>
-          <button className="btn" type="submit" disabled={enviando}>{enviando ? "Enviando..." : "Salvar"}</button>
-        </form>
-      )}
-
-      <div className="grid-cards">
-        {assets.map(a => (
-          <div key={a.id} className="card">
-            <img src={a.url} alt={a.nome} style={{ width: "100%", height: 120, objectFit: "contain", background: "#f4f5f7", borderRadius: 6 }} />
-            <h3 style={{ fontSize: 14, marginTop: 8 }}>{a.nome}</h3>
-            {a.cargo && <p style={{ color: "#6b7280", fontSize: 12, margin: "2px 0" }}>{a.cargo}</p>}
-            <div className="actions" style={{ marginTop: 8 }}>
-              <button className="danger" onClick={() => excluir(a.id)}>Excluir</button>
-            </div>
-          </div>
-        ))}
-        {assets.length === 0 && <p className="empty-state">Nada cadastrado ainda</p>}
-      </div>
-    </div>
-  );
-}
+        <button className="btn" onClick={() =>
