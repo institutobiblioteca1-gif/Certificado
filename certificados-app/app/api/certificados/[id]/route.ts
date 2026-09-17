@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { put } from "@vercel/blob";
+import { salvarArquivo } from "@/lib/armazenamento";
 import { prisma } from "@/lib/db";
 import { gerarCertificadoPDF, baixarImagem } from "@/lib/pdf";
 
@@ -76,11 +76,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   });
 
   const fileName = `certificados/${cert.loteId}/${cert.numero}-${novoAluno.replace(/\s+/g, "-")}-${Date.now()}.pdf`;
-  const blob = await put(fileName, Buffer.from(pdfBytes) as any, { access: "public", contentType: "application/pdf" });
+  const pdfUrl = await salvarArquivo(fileName, Buffer.from(pdfBytes), "application/pdf");
 
   const atualizado = await prisma.certificado.update({
     where: { id: params.id },
-    data: { aluno: novoAluno, pdfUrl: blob.url, status: "Atualizado" }
+    data: { aluno: novoAluno, pdfUrl, status: "Atualizado" }
   });
 
   if (data.cargaHoraria) {
