@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
-import { put } from "@vercel/blob";
+import { salvarArquivo } from "@/lib/armazenamento";
 import { prisma } from "@/lib/db";
 import { gerarCertificadoPDF, baixarImagem } from "@/lib/pdf";
 import { proximaSequencia } from "@/lib/numero";
@@ -137,13 +137,10 @@ export async function POST(req: NextRequest) {
       });
 
       const fileName = `certificados/${lote.id}/${numero}-${aluno.replace(/\s+/g, "-")}.pdf`;
-      const blob = await put(fileName, Buffer.from(pdfBytes) as any, {
-        access: "public",
-        contentType: "application/pdf"
-      });
+      const pdfUrl = await salvarArquivo(fileName, Buffer.from(pdfBytes), "application/pdf");
 
       const cert = await prisma.certificado.create({
-        data: { numero, aluno, loteId: lote.id, pdfUrl: blob.url }
+        data: { numero, aluno, loteId: lote.id, pdfUrl }
       });
       certificadosGerados.push(cert);
     }
