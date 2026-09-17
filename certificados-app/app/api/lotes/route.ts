@@ -2,8 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { put } from "@vercel/blob";
 import { prisma } from "@/lib/db";
-import { gerarCertificadoPDF } from "@/lib/pdf";
+import { gerarCertificadoPDF, baixarImagem } from "@/lib/pdf";
 import { proximaSequencia } from "@/lib/numero";
+
+// Baixa uma imagem do modelo (plano de fundo, cabeçalho ou assinatura) UMA
+// vez só para o lote inteiro — antes cada aluno baixava a mesma imagem de
+// novo pela rede, e uma falha passageira em qualquer uma dessas tentativas
+// fazia só AQUELE certificado sair sem a imagem, enquanto os outros do mesmo
+// lote saíam normais (o que explicava alguns certificados com plano de
+// fundo/assinatura e outros sem, dentro do mesmo lote). Se mesmo com as
+// novas tentativas automáticas (lib/pdf.ts) o download continuar falhando,
+// segue sem essa imagem para TODOS os certificados do lote — mais fácil de
+// perceber e corrigir do que uma falha aleatória em alguns alunos.
+async function baixarBytesOuNull(url: string | null | undefined, contexto: string) {
+  if (!url) return null;
+  try {
+    return await baixarImagem(url);
+  } catch (err) {
+    console.error(`Falha ao baixar ${contexto} para o lote (após tentativas):`, err);
+    return null;
+  }
+}
 
 export async function GET(req: NextRequest) {
   const search = req.nextUrl.searchParams.get("search")?.trim();
@@ -73,6 +92,15 @@ export async function POST(req: NextRequest) {
     let sequencia = await proximaSequencia(anoParaNumero);
     const certificadosGerados = [];
 
+    // Baixa plano de fundo, cabeçalho e assinatura uma única vez, antes do
+    // laço, em vez de uma vez por aluno (ver o comentário de
+    // baixarBytesOuNull acima).
+    const [planoFundoBytes, cabecalhoBytes, assinaturaBytes] = await Promise.all([
+      baixarBytesOuNull(modelo.planoFundo?.url, "plano de fundo"),
+      baixarBytesOuNull(modelo.cabecalho?.url, "cabeçalho/logo"),
+      baixarBytesOuNull(modelo.assinatura?.url, "assinatura")
+    ]);
+
     for (const aluno of alunos as string[]) {
       const numero = `CERT-${anoParaNumero}-${String(sequencia).padStart(6, "0")}`;
       sequencia++;
@@ -95,12 +123,12 @@ export async function POST(req: NextRequest) {
         alinhamento: modelo.alinhamento,
         nomeX: modelo.nomeX,
         nomeY: modelo.nomeY,
-        planoFundoUrl: modelo.planoFundo?.url,
-        cabecalhoUrl: modelo.cabecalho?.url,
+        planoFundoBytes,
+        cabecalhoBytes,
         cabecalhoX: modelo.cabecalhoX,
         cabecalhoY: modelo.cabecalhoY,
         cabecalhoLargura: modelo.cabecalhoLargura,
-        assinaturaUrl: modelo.assinatura?.url,
+        assinaturaBytes,
         assinaturaX: modelo.assinaturaX,
         assinaturaY: modelo.assinaturaY,
         assinaturaLargura: modelo.assinaturaLargura,
