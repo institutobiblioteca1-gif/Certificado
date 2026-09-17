@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { put } from "@vercel/blob";
+import { salvarArquivo } from "@/lib/armazenamento";
 import { prisma } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
@@ -33,12 +33,15 @@ export async function POST(req: NextRequest) {
   }
 
   const ext = file.name.split(".").pop();
-  const blob = await put(`${type.toLowerCase()}/${Date.now()}-${nome.replace(/\s+/g, "-")}.${ext}`, file, {
-    access: "public"
-  });
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const url = await salvarArquivo(
+    `${type.toLowerCase()}/${Date.now()}-${nome.replace(/\s+/g, "-")}.${ext}`,
+    bytes,
+    file.type
+  );
 
   const asset = await prisma.asset.create({
-    data: { type: type as any, nome, cargo, url: blob.url }
+    data: { type: type as any, nome, cargo, url }
   });
 
   return NextResponse.json(asset, { status: 201 });
