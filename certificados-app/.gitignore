@@ -1,0 +1,19 @@
+# dependências
+node_modules
+
+# build do Next.js
+.next
+out
+
+# variáveis de ambiente locais (nunca devem ir para o GitHub)
+.env
+.env.local
+.env*.local
+
+# arquivos salvos localmente (imagens de modelo e PDFs de certificados,
+# quando o sistema roda no computador em vez de na Vercel)
+public/arquivos
+
+# outros
+.DS_Store
+*.log
