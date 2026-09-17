@@ -151,6 +151,18 @@ export default function ModeloEditor({ modeloExistente }: { modeloExistente?: an
         </form>
 
         <div>
+          {/* DIAGNÓSTICO TEMPORÁRIO — remover depois de achar o motivo do
+              plano de fundo não aparecer na pré-visualização. Mostra, direto
+              na tela, o que o navegador está realmente enxergando, sem
+              precisar abrir o Console. */}
+          {modeloExistente && (
+            <pre style={{ fontSize: 11, background: "#fff3cd", border: "1px solid #f0d18a", borderRadius: 6, padding: 8, marginBottom: 10, whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+              DIAGNÓSTICO{"\n"}
+              form.planoFundoId = {JSON.stringify(form.planoFundoId)}{"\n"}
+              planosFundo carregados ({planosFundo.length}) = {JSON.stringify(planosFundo.map(p => p.id))}{"\n"}
+              planoFundo encontrado? = {planoFundo ? `SIM (${planoFundo.url})` : "NÃO"}
+            </pre>
+          )}
           <p className="helper-text" style={{ marginBottom: 8 }}>Pré-visualização aproximada</p>
           <div className="preview-canvas" style={{ backgroundImage: planoFundo ? `url(${planoFundo.url})` : undefined, background: planoFundo ? undefined : "#fff" }}>
             {cabecalho && (
