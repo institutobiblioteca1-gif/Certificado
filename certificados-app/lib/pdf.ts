@@ -10,12 +10,20 @@ export type GerarCertificadoParams = {
   alinhamento: string;
   nomeX: number;
   nomeY: number;
-  planoFundoUrl?: string | null;
-  cabecalhoUrl?: string | null;
+  // Antes esses três campos eram URLs, e a imagem era baixada de novo pela
+  // rede para CADA aluno do lote (o mesmo arquivo, dezenas de vezes). Isso
+  // multiplicava a chance de uma falha de rede/timeout passageira em algum
+  // aluno no meio do lote — que era engolida silenciosamente (ver mais
+  // abaixo) e fazia só AQUELE certificado sair sem plano de fundo/logo/
+  // assinatura, enquanto os outros do mesmo lote saíam normais. Agora quem
+  // gera o lote (app/api/lotes/route.ts) baixa cada imagem uma única vez e
+  // passa os bytes já prontos aqui, eliminando quase todo esse risco.
+  planoFundoBytes?: Uint8Array | null;
+  cabecalhoBytes?: Uint8Array | null;
   cabecalhoX: number;
   cabecalhoY: number;
   cabecalhoLargura: number;
-  assinaturaUrl?: string | null;
+  assinaturaBytes?: Uint8Array | null;
   assinaturaX: number;
   assinaturaY: number;
   assinaturaLargura: number;
@@ -32,13 +40,31 @@ function hexToRgb(hex: string) {
   return rgb(r, g, b);
 }
 
-async function embedImageFromUrl(pdfDoc: PDFDocument, url: string) {
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Falha ao baixar imagem (${res.status}): ${url}`);
+// Baixa os bytes de uma imagem (plano de fundo, cabeçalho/logo ou
+// assinatura), tentando de novo automaticamente se a rede falhar ou o
+// servidor responder com erro passageiro — evita que uma falha de rede
+// isolada faça a imagem sumir do certificado.
+export async function baixarImagem(url: string, tentativas = 3): Promise<Uint8Array> {
+  let ultimoErro: unknown;
+  for (let tentativa = 1; tentativa <= tentativas; tentativa++) {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Falha ao baixar imagem (${res.status}): ${url}`);
+      }
+      return new Uint8Array(await res.arrayBuffer());
+    } catch (err) {
+      ultimoErro = err;
+      if (tentativa < tentativas) {
+        // pequena espera antes de tentar de novo (300ms, 600ms, ...)
+        await new Promise(resolve => setTimeout(resolve, 300 * tentativa));
+      }
+    }
   }
-  const bytes = new Uint8Array(await res.arrayBuffer());
+  throw ultimoErro;
+}
 
+function embedImageBytes(pdfDoc: PDFDocument, bytes: Uint8Array, origem: string) {
   // Detecta o formato real pelos bytes do arquivo (assinatura/"magic number"),
   // em vez de confiar na extensão presente na URL — mais robusto e evita
   // tentar embutir como JPG algo que não é (ex.: WEBP), que falha silenciosamente.
@@ -55,9 +81,7 @@ async function embedImageFromUrl(pdfDoc: PDFDocument, url: string) {
   // genérico do pdf-lib que era engolido pelo try/catch de quem chama esta
   // função, fazendo o plano de fundo/cabeçalho/assinatura sumir do certificado
   // sem nenhum aviso.
-  throw new Error(
-    `Formato de imagem não suportado para gerar o PDF (esperado PNG ou JPG): ${url}`
-  );
+  throw new Error(`Formato de imagem não suportado para gerar o PDF (esperado PNG ou JPG): ${origem}`);
 }
 
 function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: number): string[] {
@@ -85,9 +109,9 @@ export async function gerarCertificadoPDF(params: GerarCertificadoParams): Promi
   const page = pdfDoc.addPage([842, 595]); // A4 paisagem
   const { width, height } = page.getSize();
 
-  if (params.planoFundoUrl) {
+  if (params.planoFundoBytes) {
     try {
-      const img = await embedImageFromUrl(pdfDoc, params.planoFundoUrl);
+      const img = embedImageBytes(pdfDoc, params.planoFundoBytes, "plano de fundo");
       page.drawImage(img, { x: 0, y: 0, width, height });
     } catch (err) {
       // segue sem plano de fundo em caso de falha, mas registra o motivo
@@ -97,9 +121,9 @@ export async function gerarCertificadoPDF(params: GerarCertificadoParams): Promi
     }
   }
 
-  if (params.cabecalhoUrl) {
+  if (params.cabecalhoBytes) {
     try {
-      const img = await embedImageFromUrl(pdfDoc, params.cabecalhoUrl);
+      const img = embedImageBytes(pdfDoc, params.cabecalhoBytes, "cabeçalho/logo");
       const logoWidth = params.cabecalhoLargura;
       const scale = logoWidth / img.width;
       const logoHeight = img.height * scale;
@@ -142,9 +166,9 @@ export async function gerarCertificadoPDF(params: GerarCertificadoParams): Promi
     y -= lineHeight;
   }
 
-  if (params.assinaturaUrl) {
+  if (params.assinaturaBytes) {
     try {
-      const img = await embedImageFromUrl(pdfDoc, params.assinaturaUrl);
+      const img = embedImageBytes(pdfDoc, params.assinaturaBytes, "assinatura");
       const sigWidth = params.assinaturaLargura;
       const scale = sigWidth / img.width;
       const sigHeight = img.height * scale;
