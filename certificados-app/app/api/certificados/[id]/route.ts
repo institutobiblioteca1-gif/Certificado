@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { prisma } from "@/lib/db";
-import { gerarCertificadoPDF } from "@/lib/pdf";
+import { gerarCertificadoPDF, baixarImagem } from "@/lib/pdf";
+
+// Baixa uma imagem do modelo (plano de fundo, cabeçalho ou assinatura) para
+// reemitir um certificado individual; se falhar mesmo com as novas
+// tentativas automáticas de lib/pdf.ts, segue sem essa imagem em vez de
+// travar a reemissão inteira.
+async function baixarBytesOuNull(url: string | null | undefined, contexto: string) {
+  if (!url) return null;
+  try {
+    return await baixarImagem(url);
+  } catch (err) {
+    console.error(`Falha ao baixar ${contexto} para reemitir certificado:`, err);
+    return null;
+  }
+}
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const cert = await prisma.certificado.findUnique({
@@ -24,6 +38,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   const cargaHoraria = data.cargaHoraria ?? cert.lote.cargaHoraria ?? "";
   const modelo = cert.lote.modelo;
 
+  const [planoFundoBytes, cabecalhoBytes, assinaturaBytes] = await Promise.all([
+    baixarBytesOuNull(modelo.planoFundo?.url, "plano de fundo"),
+    baixarBytesOuNull(modelo.cabecalho?.url, "cabeçalho/logo"),
+    baixarBytesOuNull(modelo.assinatura?.url, "assinatura")
+  ]);
+
   const pdfBytes = await gerarCertificadoPDF({
     texto: modelo.texto,
     aluno: novoAluno,
@@ -42,12 +62,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     alinhamento: modelo.alinhamento,
     nomeX: modelo.nomeX,
     nomeY: modelo.nomeY,
-    planoFundoUrl: modelo.planoFundo?.url,
-    cabecalhoUrl: modelo.cabecalho?.url,
+    planoFundoBytes,
+    cabecalhoBytes,
     cabecalhoX: modelo.cabecalhoX,
     cabecalhoY: modelo.cabecalhoY,
     cabecalhoLargura: modelo.cabecalhoLargura,
-    assinaturaUrl: modelo.assinatura?.url,
+    assinaturaBytes,
     assinaturaX: modelo.assinaturaX,
     assinaturaY: modelo.assinaturaY,
     assinaturaLargura: modelo.assinaturaLargura,
