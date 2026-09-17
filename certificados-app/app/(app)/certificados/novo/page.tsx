@@ -64,7 +64,11 @@ export default function NovaGeracaoPage() {
       setResultado({ quantidade: data.certificados.length, loteId: data.lote.id });
       setPasso(4);
     } else {
-      alert("Erro ao gerar certificados. Verifique os dados informados.");
+      // Antes a mensagem do servidor era descartada e sempre aparecia esse
+      // texto genérico, mesmo quando a causa real era outra (ex.: número de
+      // certificado duplicado) — por isso não dava pra saber o que corrigir.
+      const data = await res.json().catch(() => null);
+      alert(data?.error || "Erro ao gerar certificados. Verifique os dados informados.");
     }
   }
 
