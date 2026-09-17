@@ -64,7 +64,7 @@ export async function baixarImagem(url: string, tentativas = 3): Promise<Uint8Ar
   throw ultimoErro;
 }
 
-function embedImageBytes(pdfDoc: PDFDocument, bytes: Uint8Array, origem: string) {
+async function embedImageBytes(pdfDoc: PDFDocument, bytes: Uint8Array, origem: string) {
   // Detecta o formato real pelos bytes do arquivo (assinatura/"magic number"),
   // em vez de confiar na extensão presente na URL — mais robusto e evita
   // tentar embutir como JPG algo que não é (ex.: WEBP), que falha silenciosamente.
@@ -111,7 +111,7 @@ export async function gerarCertificadoPDF(params: GerarCertificadoParams): Promi
 
   if (params.planoFundoBytes) {
     try {
-      const img = embedImageBytes(pdfDoc, params.planoFundoBytes, "plano de fundo");
+      const img = await embedImageBytes(pdfDoc, params.planoFundoBytes, "plano de fundo");
       page.drawImage(img, { x: 0, y: 0, width, height });
     } catch (err) {
       // segue sem plano de fundo em caso de falha, mas registra o motivo
@@ -123,7 +123,7 @@ export async function gerarCertificadoPDF(params: GerarCertificadoParams): Promi
 
   if (params.cabecalhoBytes) {
     try {
-      const img = embedImageBytes(pdfDoc, params.cabecalhoBytes, "cabeçalho/logo");
+      const img = await embedImageBytes(pdfDoc, params.cabecalhoBytes, "cabeçalho/logo");
       const logoWidth = params.cabecalhoLargura;
       const scale = logoWidth / img.width;
       const logoHeight = img.height * scale;
@@ -168,7 +168,7 @@ export async function gerarCertificadoPDF(params: GerarCertificadoParams): Promi
 
   if (params.assinaturaBytes) {
     try {
-      const img = embedImageBytes(pdfDoc, params.assinaturaBytes, "assinatura");
+      const img = await embedImageBytes(pdfDoc, params.assinaturaBytes, "assinatura");
       const sigWidth = params.assinaturaLargura;
       const scale = sigWidth / img.width;
       const sigHeight = img.height * scale;
