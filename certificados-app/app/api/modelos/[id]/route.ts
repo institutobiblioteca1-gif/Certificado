@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
@@ -37,6 +38,30 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  await prisma.modelo.delete({ where: { id: params.id } });
-  return NextResponse.json({ ok: true });
+  try {
+    await prisma.modelo.delete({ where: { id: params.id } });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      if (err.code === "P2025") {
+        // registro já não existe mais — trata como sucesso, já é o estado desejado
+        return NextResponse.json({ ok: true });
+      }
+      if (err.code === "P2003") {
+        // violação de chave estrangeira: existe(m) lote(s)/certificado(s) gerados
+        // com este modelo, então o banco recusa a exclusão para não deixar
+        // certificados já emitidos "órfãos"
+        return NextResponse.json(
+          {
+            error:
+              "Este modelo já foi usado para gerar certificados e não pode ser excluído. " +
+              "Para remover, é preciso primeiro excluir os lotes/certificados que usam este modelo."
+          },
+          { status: 409 }
+        );
+      }
+    }
+    console.error("Falha ao excluir modelo:", err);
+    return NextResponse.json({ error: "Não foi possível excluir o modelo." }, { status: 500 });
+  }
 }
