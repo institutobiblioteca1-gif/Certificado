@@ -50,7 +50,15 @@ export default function ModeloEditor({ modeloExistente }: { modeloExistente?: an
 
   async function excluir() {
     if (!modeloExistente || !confirm("Excluir este modelo?")) return;
-    await fetch(`/api/modelos/${modeloExistente.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/modelos/${modeloExistente.id}`, { method: "DELETE" });
+    if (!res.ok) {
+      // antes o erro era ignorado e a tela voltava para /modelos como se tivesse
+      // dado certo, mesmo quando a exclusão falhava no servidor — por isso
+      // parecia que "não fazia nada"
+      const data = await res.json().catch(() => null);
+      alert(data?.error || "Não foi possível excluir o modelo.");
+      return;
+    }
     router.push("/modelos");
   }
 
