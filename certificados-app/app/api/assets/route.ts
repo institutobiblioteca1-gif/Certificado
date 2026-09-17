@@ -22,6 +22,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Arquivo, tipo e nome são obrigatórios" }, { status: 400 });
   }
 
+  // O gerador de PDF (pdf-lib) só sabe embutir PNG e JPG. Aceitar outros
+  // formatos aqui (ex.: WEBP) faz a imagem sumir silenciosamente na hora de
+  // gerar o certificado, mesmo com o modelo salvo corretamente.
+  if (!["image/png", "image/jpeg"].includes(file.type)) {
+    return NextResponse.json(
+      { error: "Formato de imagem não suportado. Envie um arquivo PNG ou JPG." },
+      { status: 400 }
+    );
+  }
+
   const ext = file.name.split(".").pop();
   const blob = await put(`${type.toLowerCase()}/${Date.now()}-${nome.replace(/\s+/g, "-")}.${ext}`, file, {
     access: "public"
